@@ -27,7 +27,7 @@ npm test
 
 ## Qué verifica
 
-Carga `index.html` real (con `data.js` real, sin mocks) contra un servidor
+Carga `index.html` real una vez por viaje — sin parámetro (`data.js`, agosto) y con `?viaje=maine` (`data-maine.js`) — con los datos reales, sin mocks, contra un servidor
 HTTP estático efímero, y confirma:
 
 - `TRIP_DATA` se cargó desde `data.js` con un array `days[]`.

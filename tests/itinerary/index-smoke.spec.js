@@ -71,36 +71,41 @@ function startServer() {
   await ctx.route('https://upload.wikimedia.org/**', route => route.abort());
   await ctx.route('https://commons.wikimedia.org/**', route => route.abort());
 
-  const pg = await ctx.newPage();
-  const errors = [];
-  pg.on('pageerror', e => errors.push('pageerror: ' + e.message));
-  pg.on('console', msg => {
-    if (msg.type() === 'error' && !msg.text().includes('404') && !msg.text().includes('net::ERR_')) {
-      errors.push('console: ' + msg.text());
-    }
-  });
+  // Un solo shell, varios viajes: index.html elige el archivo de datos con ?viaje=<id>
+  // (ver TRIPS en index.html). Se prueba cada viaje con sus datos reales.
+  for (const [query, dataFile] of [['', 'data.js'], ['?viaje=maine', 'data-maine.js']]) {
+    const pg = await ctx.newPage();
+    const errors = [];
+    pg.on('pageerror', e => errors.push('pageerror: ' + e.message));
+    pg.on('console', msg => {
+      if (msg.type() === 'error' && !msg.text().includes('404') && !msg.text().includes('net::ERR_')) {
+        errors.push('console: ' + msg.text());
+      }
+    });
 
-  console.log('\n=== Itinerario (index.html + data.js real) ===');
-  await pg.goto(`http://127.0.0.1:${port}/index.html`, { waitUntil: 'networkidle' });
-  await pg.waitForTimeout(300);
+    console.log(`\n=== Itinerario (index.html${query} + ${dataFile} real) ===`);
+    await pg.goto(`http://127.0.0.1:${port}/index.html${query}`, { waitUntil: 'networkidle' });
+    await pg.waitForTimeout(300);
 
-  const info = await pg.evaluate(() => ({
-    tripDataLoaded: typeof TRIP_DATA === 'object' && Array.isArray(TRIP_DATA.days),
-    expectedDayCount: typeof TRIP_DATA === 'object' ? TRIP_DATA.days.length : null,
-    renderedDaySections: document.querySelectorAll('#days section.day').length,
-    navButtons: document.querySelectorAll('#nav button, #nav a').length,
-    // ids de sección deben coincidir 1:1 con el campo "d" de cada día (ver index.html:74, id="d${x.d}")
-    dayIdsMatch: typeof TRIP_DATA === 'object'
-      ? TRIP_DATA.days.every(x => !!document.getElementById('d' + x.d))
-      : false,
-  }));
+    const info = await pg.evaluate(() => ({
+      tripDataLoaded: typeof TRIP_DATA === 'object' && Array.isArray(TRIP_DATA.days),
+      expectedDayCount: typeof TRIP_DATA === 'object' ? TRIP_DATA.days.length : null,
+      renderedDaySections: document.querySelectorAll('#days section.day').length,
+      navButtons: document.querySelectorAll('#nav button, #nav a').length,
+      // ids de sección deben coincidir 1:1 con el campo "d" de cada día (ver index.html:74, id="d${x.d}")
+      dayIdsMatch: typeof TRIP_DATA === 'object'
+        ? TRIP_DATA.days.every(x => !!document.getElementById('d' + x.d))
+        : false,
+    }));
 
-  check('TRIP_DATA cargó desde data.js con un array days[]', info.tripDataLoaded, info);
-  check(`se renderizó una <section class="day"> por cada entrada de TRIP_DATA.days (${info.expectedDayCount})`,
-    info.renderedDaySections === info.expectedDayCount, info);
-  check('cada día tiene su id de sección correspondiente (id="d<N>")', info.dayIdsMatch);
-  check('la barra de navegación de días se generó (al menos un botón/enlace)', info.navButtons > 0, info.navButtons);
-  check('carga sin errores de consola/página', errors.length === 0, errors);
+    check(`[${dataFile}] TRIP_DATA cargó con un array days[]`, info.tripDataLoaded, info);
+    check(`[${dataFile}] se renderizó una <section class="day"> por cada entrada de TRIP_DATA.days (${info.expectedDayCount})`,
+      info.renderedDaySections === info.expectedDayCount, info);
+    check(`[${dataFile}] cada día tiene su id de sección correspondiente (id="d<N>")`, info.dayIdsMatch);
+    check(`[${dataFile}] la barra de navegación de días se generó (al menos un botón/enlace)`, info.navButtons > 0, info.navButtons);
+    check(`[${dataFile}] carga sin errores de consola/página`, errors.length === 0, errors);
+    await pg.close();
+  }
 
   await ctx.close();
   await browser.close();
