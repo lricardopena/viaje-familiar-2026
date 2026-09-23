@@ -96,6 +96,13 @@ function startServer() {
       dayIdsMatch: typeof TRIP_DATA === 'object'
         ? TRIP_DATA.days.every(x => !!document.getElementById('d' + x.d))
         : false,
+      // Rango de fechas del encabezado ("14–23 AGO") y del <title> — en agosto es
+      // texto estático de index.html, así que puede quedar desfasado si se agrega un día.
+      dayRange: typeof TRIP_DATA === 'object'
+        ? TRIP_DATA.days[0].d + '–' + TRIP_DATA.days[TRIP_DATA.days.length - 1].d
+        : null,
+      heroLabel: (document.getElementById('heroLabel') || {}).textContent || '',
+      title: document.title,
     }));
 
     check(`[${dataFile}] TRIP_DATA cargó con un array days[]`, info.tripDataLoaded, info);
@@ -103,6 +110,9 @@ function startServer() {
       info.renderedDaySections === info.expectedDayCount, info);
     check(`[${dataFile}] cada día tiene su id de sección correspondiente (id="d<N>")`, info.dayIdsMatch);
     check(`[${dataFile}] la barra de navegación de días se generó (al menos un botón/enlace)`, info.navButtons > 0, info.navButtons);
+    check(`[${dataFile}] el encabezado y el <title> muestran el rango real de días (${info.dayRange})`,
+      info.heroLabel.includes(info.dayRange) && info.title.includes(info.dayRange),
+      { heroLabel: info.heroLabel, title: info.title });
     check(`[${dataFile}] carga sin errores de consola/página`, errors.length === 0, errors);
     await pg.close();
   }

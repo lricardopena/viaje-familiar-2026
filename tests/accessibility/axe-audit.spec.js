@@ -83,6 +83,10 @@ function formatViolations(violations) {
 const TARGETS = [
   { label: 'Story Land', path: '/storyland.html', tabs: ['ahora', 'checklist', 'favoritas', 'tips'] },
   { label: 'LEGOLAND New York', path: '/legoland.html', tabs: ['ahora', 'checklist', 'favoritas', 'tips'] },
+  // Itinerario: una sola "vista" con todos los días visibles y todos los <details>
+  // abiertos (pendientes, puntos multistop, carga EV), para que axe vea cada botón.
+  { label: 'Itinerario agosto', path: '/index.html', views: ['todos los días'] },
+  { label: 'Itinerario Maine', path: '/index.html?viaje=maine', views: ['todos los días'] },
 ];
 
 (async () => {
@@ -104,8 +108,12 @@ const TARGETS = [
     await pg.goto(`http://127.0.0.1:${port}${target.path}`, { waitUntil: 'networkidle' });
     await pg.waitForTimeout(500);
 
-    for (const tab of target.tabs) {
-      await pg.evaluate((t) => { setTab(t); renderAll(); }, tab);
+    for (const tab of target.tabs || target.views) {
+      if (target.tabs) {
+        await pg.evaluate((t) => { setTab(t); renderAll(); }, tab);
+      } else {
+        await pg.evaluate(() => { selectAll(); document.querySelectorAll('details').forEach(d => { d.open = true; }); });
+      }
       await pg.waitForTimeout(200);
 
       const results = await new AxeBuilder({ page: pg }).withTags(WCAG_TAGS).analyze();
@@ -113,7 +121,7 @@ const TARGETS = [
       const minor = results.violations.filter(v => v.impact !== 'serious' && v.impact !== 'critical');
 
       check(
-        `${target.label} · pestaña "${tab}": sin violaciones serious/critical (WCAG A/AA)`,
+        `${target.label} · ${target.tabs ? 'pestaña' : 'vista'} "${tab}": sin violaciones serious/critical (WCAG A/AA)`,
         serious.length === 0,
         serious.length ? formatViolations(serious) : undefined
       );
