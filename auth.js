@@ -41,7 +41,7 @@
     iterations: 400000, // PBKDF2-SHA256
     salt: 'S6abWjko3kZmeb73gv+LMQ==',
     verifier: '1RZmSKmhE8rqtK0GneQBMAO53rK7d6A9BjcWkoCeEJE=',
-    sessionDurationHours: 24,
+    sessionDurationHours: 24 * 30, // 30 días
     storageKey: 'viaje2026_auth_session'
   };
 
