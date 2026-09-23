@@ -83,6 +83,14 @@ function formatViolations(violations) {
 const TARGETS = [
   { label: 'Story Land', path: '/storyland.html', tabs: ['ahora', 'checklist', 'favoritas', 'tips'] },
   { label: 'LEGOLAND New York', path: '/legoland.html', tabs: ['ahora', 'checklist', 'favoritas', 'tips'] },
+  // Itinerario: una sola "vista" con todos los días visibles y todos los <details>
+  // abiertos (pendientes, puntos multistop, carga EV), para que axe vea cada botón.
+  // `blocking` limita qué nodos hacen fallar el check: por ahora sólo los botones
+  // naranjas de ruta/plan (.dayRoute, .slplan). El resto de violaciones del
+  // itinerario son pendientes conocidos, anteriores a este test, y se listan
+  // como información hasta que se decida cómo corregirlos.
+  { label: 'Itinerario agosto', path: '/index.html', views: ['todos los días'], blocking: /\.(dayRoute|slplan)\b/ },
+  { label: 'Itinerario Maine', path: '/index.html?viaje=maine', views: ['todos los días'], blocking: /\.(dayRoute|slplan)\b/ },
 ];
 
 (async () => {
@@ -104,16 +112,27 @@ const TARGETS = [
     await pg.goto(`http://127.0.0.1:${port}${target.path}`, { waitUntil: 'networkidle' });
     await pg.waitForTimeout(500);
 
-    for (const tab of target.tabs) {
-      await pg.evaluate((t) => { setTab(t); renderAll(); }, tab);
+    for (const tab of target.tabs || target.views) {
+      if (target.tabs) {
+        await pg.evaluate((t) => { setTab(t); renderAll(); }, tab);
+      } else {
+        await pg.evaluate(() => { selectAll(); document.querySelectorAll('details').forEach(d => { d.open = true; }); });
+      }
       await pg.waitForTimeout(200);
 
       const results = await new AxeBuilder({ page: pg }).withTags(WCAG_TAGS).analyze();
-      const serious = results.violations.filter(v => v.impact === 'serious' || v.impact === 'critical');
+      let serious = results.violations.filter(v => v.impact === 'serious' || v.impact === 'critical');
       const minor = results.violations.filter(v => v.impact !== 'serious' && v.impact !== 'critical');
+      if (target.blocking) {
+        const known = serious.map(v => ({ ...v, nodes: v.nodes.filter(n => !target.blocking.test(n.target.join(' '))) })).filter(v => v.nodes.length);
+        serious = serious.map(v => ({ ...v, nodes: v.nodes.filter(n => target.blocking.test(n.target.join(' '))) })).filter(v => v.nodes.length);
+        if (known.length) {
+          console.log(`     (pendiente conocido, no bloqueante) ${known.map(v => `${v.id} ×${v.nodes.length}`).join(', ')}`);
+        }
+      }
 
       check(
-        `${target.label} · pestaña "${tab}": sin violaciones serious/critical (WCAG A/AA)`,
+        `${target.label} · ${target.tabs ? 'pestaña' : 'vista'} "${tab}": sin violaciones serious/critical (WCAG A/AA)${target.blocking ? ' en botones de ruta/plan' : ''}`,
         serious.length === 0,
         serious.length ? formatViolations(serious) : undefined
       );
