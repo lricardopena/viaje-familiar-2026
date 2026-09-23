@@ -1,8 +1,8 @@
 # Pase de accesibilidad (axe-core)
 
 Corre [`@axe-core/playwright`](https://www.npmjs.com/package/@axe-core/playwright)
-(reglas WCAG 2.0/2.1 nivel A y AA) contra `storyland.html`/`legoland.html` con
-datos reales — ver `audits/04-tickets.md` TICKET-5 (H6) y
+(reglas WCAG 2.0/2.1 nivel A y AA) contra `storyland.html`/`legoland.html` y
+el itinerario (`index.html` y `index.html?viaje=maine`) con datos reales — ver `audits/04-tickets.md` TICKET-5 (H6) y
 `audits/2F-performance-a11y.md`, que dejó la accesibilidad del Theme Park
 Companion como "no verificable sin herramienta dedicada" en la auditoría
 original.
@@ -33,6 +33,12 @@ silenciosamente cada corrida del pipeline principal.
 Para cada parque (Story Land, LEGOLAND New York) y cada una de sus 4
 pestañas (Ahora/Checklist/Favoritas/Tips): cero violaciones de impacto
 `serious`/`critical` bajo las reglas WCAG 2.0/2.1 A+AA de axe-core.
+
+Para el itinerario de cada viaje (agosto y Maine): la misma regla, con todos
+los días visibles y todos los `<details>` abiertos (pendientes, puntos
+multistop, carga EV), para que axe vea cada botón. Al agregar un viaje nuevo
+a `TRIPS` en `index.html`, agregar también su entrada en `TARGETS` de
+`axe-audit.spec.js`.
 
 La sesión de `auth.js` se inyecta ya autenticada vía `localStorage` (mismo
 `storageKey`/forma que usa `auth.js`, nunca se modifica ni desactiva el
