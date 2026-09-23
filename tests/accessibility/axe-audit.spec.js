@@ -85,12 +85,8 @@ const TARGETS = [
   { label: 'LEGOLAND New York', path: '/legoland.html', tabs: ['ahora', 'checklist', 'favoritas', 'tips'] },
   // Itinerario: una sola "vista" con todos los días visibles y todos los <details>
   // abiertos (pendientes, puntos multistop, carga EV), para que axe vea cada botón.
-  // `blocking` limita qué nodos hacen fallar el check: por ahora sólo los botones
-  // naranjas de ruta/plan (.dayRoute, .slplan). El resto de violaciones del
-  // itinerario son pendientes conocidos, anteriores a este test, y se listan
-  // como información hasta que se decida cómo corregirlos.
-  { label: 'Itinerario agosto', path: '/index.html', views: ['todos los días'], blocking: /\.(dayRoute|slplan)\b/ },
-  { label: 'Itinerario Maine', path: '/index.html?viaje=maine', views: ['todos los días'], blocking: /\.(dayRoute|slplan)\b/ },
+  { label: 'Itinerario agosto', path: '/index.html', views: ['todos los días'] },
+  { label: 'Itinerario Maine', path: '/index.html?viaje=maine', views: ['todos los días'] },
 ];
 
 (async () => {
@@ -121,18 +117,11 @@ const TARGETS = [
       await pg.waitForTimeout(200);
 
       const results = await new AxeBuilder({ page: pg }).withTags(WCAG_TAGS).analyze();
-      let serious = results.violations.filter(v => v.impact === 'serious' || v.impact === 'critical');
+      const serious = results.violations.filter(v => v.impact === 'serious' || v.impact === 'critical');
       const minor = results.violations.filter(v => v.impact !== 'serious' && v.impact !== 'critical');
-      if (target.blocking) {
-        const known = serious.map(v => ({ ...v, nodes: v.nodes.filter(n => !target.blocking.test(n.target.join(' '))) })).filter(v => v.nodes.length);
-        serious = serious.map(v => ({ ...v, nodes: v.nodes.filter(n => target.blocking.test(n.target.join(' '))) })).filter(v => v.nodes.length);
-        if (known.length) {
-          console.log(`     (pendiente conocido, no bloqueante) ${known.map(v => `${v.id} ×${v.nodes.length}`).join(', ')}`);
-        }
-      }
 
       check(
-        `${target.label} · ${target.tabs ? 'pestaña' : 'vista'} "${tab}": sin violaciones serious/critical (WCAG A/AA)${target.blocking ? ' en botones de ruta/plan' : ''}`,
+        `${target.label} · ${target.tabs ? 'pestaña' : 'vista'} "${tab}": sin violaciones serious/critical (WCAG A/AA)`,
         serious.length === 0,
         serious.length ? formatViolations(serious) : undefined
       );
